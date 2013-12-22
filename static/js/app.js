@@ -1,1 +1,4 @@
-testing
+
+var app = angular.module('app', [
+]);
+
