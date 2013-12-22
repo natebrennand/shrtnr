@@ -3,13 +3,12 @@ package shrink
 const Test int = 0
 
 // returns a randomly generated shortened URL
-func ShortenURL(url string) (string, error) {
-	// should generate the code then call createURL()
+func RandURL() (string, error) {
 	return "", nil
 }
 
 // creates the requested shortened URL
-func CreateURL(logURL string, shortURL string) (string, error) {
+func CreateURL(longURL string, shortURL string) (string, error) {
 	return "", nil
 }
 

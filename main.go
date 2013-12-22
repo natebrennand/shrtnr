@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"encoding/json"
+
 	"shrtnr/shrink"
 )
 
@@ -12,6 +14,55 @@ const (
 	PUT string = "PUT"
 )
 
+// Used for server responses
+type ServerResponse struct {
+	URL string
+}
+// Used for server requests
+type ServerRequest struct {
+	LongURL string
+	RequestedURL string
+}
+
+// Serializes and returns the given ServerResponse struct through the resp
+func ReturnJson(resp http.ResponseWriter, data ServerResponse) {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+	}
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Write(jsonData)
+}
+
+// Parses the JSON request body from the request
+func GetReqBody(req http.Request) (ServerRequest, error) {
+	decoder := json.NewDecoder(req.Body)
+	var requestBody ServerRequest
+	err := decoder.Decode(&requestBody)
+	return requestBody, err
+}
+
+// Given a short URL find the full length URL and returns it
+func GetFullURL(resp http.ResponseWriter, shortURL string) {
+	longURL, err := shrink.RetrieveURL(shortURL)
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+	}
+	ReturnJson(resp, ServerResponse{longURL})
+}
+
+// Given a ServerRequest, tries to create a short url before returning
+func CreateURL(resp http.ResponseWriter, data ServerRequest) {
+	shortURL, err := shrink.CreateURL(data.RequestedURL, data.LongURL)
+
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+	}
+	response := ServerResponse{shortURL}
+	ReturnJson(resp, response)
+}
+
+// Routes all http requests to their corresponding functions
 func router(resp http.ResponseWriter, req *http.Request) {
 	url := req.URL.Path
 	method := req.Method
@@ -24,18 +75,19 @@ func router(resp http.ResponseWriter, req *http.Request) {
 		switch url {
 		case "/":
 			// return homepage
+			// deal w/ static resources too
 		default:
-			// returned full length URL
-			longURL, err := shrink.RetrieveURL(shortURL)
-			fmt.Println(longURL, err)
+			GetFullURL(resp, shortURL)
 		}
 	case method == POST && url == "/":
-		// creates a random endpoint
-	case method == PUT && url != "/":
-		// creates a specific endpoint
+		requestBody, err := GetReqBody(*req)
+		if err != nil {
+			resp.WriteHeader(http.StatusInternalServerError)
+		}
+		CreateURL(resp, requestBody)
 	default:
-		resp.WriteHeader(http.StatusNotImplemented)
 		// return a 501 error
+		resp.WriteHeader(http.StatusNotImplemented)
 	}
 }
 
