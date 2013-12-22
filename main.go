@@ -85,9 +85,8 @@ func router(resp http.ResponseWriter, req *http.Request) {
 		switch url {
 		case "/":
 			// return homepage
-			// TODO: deal w/ static resources too
 			fmt.Println("Trying to serve the hompage")
-			fmt.Fprintf(resp, "Hello World")
+			http.ServeFile(resp, req, "static/index.html")
 		default:
 			GetFullURL(resp, *req, shortURL)
 		}
@@ -106,6 +105,8 @@ func router(resp http.ResponseWriter, req *http.Request) {
 func main() {
 	fmt.Println("running on 8000")
 
+	http.Handle("/static/",
+		http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 	http.HandleFunc("/", router)
 	http.ListenAndServe("localhost:8000", nil)
 }
