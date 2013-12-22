@@ -1,17 +1,19 @@
-package shrtnr
+package shrink
+
+const Test int = 0
 
 // returns a randomly generated shortened URL
-func shortenURL(url string) (string, error) {
+func ShortenURL(url string) (string, error) {
 	// should generate the code then call createURL()
 	return "", nil
 }
 
 // creates the requested shortened URL
-func createURL(logURL string, shortURL string) (string, error) {
+func CreateURL(logURL string, shortURL string) (string, error) {
 	return "", nil
 }
 
 // retrieves a URL based on the shortened URL
-func retrieveURL(shortURL string) (string, error) {
+func RetrieveURL(shortURL string) (string, error) {
 	return "", nil
 }
