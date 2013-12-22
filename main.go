@@ -42,22 +42,23 @@ func GetReqBody(req http.Request) (ServerRequest, error) {
 }
 
 // Given a short URL find the full length URL and returns it
-func GetFullURL(resp http.ResponseWriter, shortURL string) {
+func GetFullURL(resp http.ResponseWriter, req http.Request, shortURL string) {
 	longURL, err := shrink.RetrieveURL(shortURL)
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
 	}
-	ReturnJson(resp, ServerResponse{longURL})
+	http.Redirect(resp, &req, longURL, 302)
 }
 
 // Given a ServerRequest, tries to create a short url before returning
 func CreateURL(resp http.ResponseWriter, data ServerRequest) {
-	shortURL, err := shrink.CreateURL(data.RequestedURL, data.LongURL)
+	shortURL, err := shrink.CreateURL(data.LongURL, data.RequestedURL)
 
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
 	}
 	response := ServerResponse{shortURL}
+	fmt.Println(response)
 	ReturnJson(resp, response)
 }
 
@@ -67,16 +68,16 @@ func router(resp http.ResponseWriter, req *http.Request) {
 	method := req.Method
 	shortURL := url[1:]
 
-	fmt.Println(method, url)
+	fmt.Println(method, url) // TODO: delete
 
 	switch {
 	case method == GET:
 		switch url {
 		case "/":
 			// return homepage
-			// deal w/ static resources too
+			// TODO: deal w/ static resources too
 		default:
-			GetFullURL(resp, shortURL)
+			go GetFullURL(resp, *req, shortURL)
 		}
 	case method == POST && url == "/":
 		requestBody, err := GetReqBody(*req)
@@ -86,7 +87,7 @@ func router(resp http.ResponseWriter, req *http.Request) {
 		CreateURL(resp, requestBody)
 	default:
 		// return a 501 error
-		resp.WriteHeader(http.StatusNotImplemented)
+		go resp.WriteHeader(http.StatusNotImplemented)
 	}
 }
 
