@@ -1,25 +1,26 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"encoding/json"
 	"shrtnr/shrink"
 )
 
 const (
-	GET string = "GET"
+	GET  string = "GET"
 	POST string = "POST"
-	PUT string = "PUT"
+	PUT  string = "PUT"
 )
 
 // Used for server responses
 type ServerResponse struct {
 	URL string
 }
+
 // Used for server requests
 type ServerRequest struct {
-	LongURL string
+	LongURL      string
 	RequestedURL string
 }
 
@@ -45,7 +46,12 @@ func GetReqBody(req http.Request) (ServerRequest, error) {
 func GetFullURL(resp http.ResponseWriter, req http.Request, shortURL string) {
 	longURL, err := shrink.RetrieveURL(shortURL)
 	if err != nil {
-		resp.WriteHeader(http.StatusInternalServerError)
+		if err == shrink.UrlNotFound {
+			http.Error(resp, err.Error(), http.StatusFound)
+			return
+		}
+		http.Error(resp, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	http.Redirect(resp, &req, longURL, 302)
 }
@@ -53,9 +59,13 @@ func GetFullURL(resp http.ResponseWriter, req http.Request, shortURL string) {
 // Given a ServerRequest, tries to create a short url before returning
 func CreateURL(resp http.ResponseWriter, data ServerRequest) {
 	shortURL, err := shrink.CreateURL(data.LongURL, data.RequestedURL)
-
 	if err != nil {
+		if err == shrink.UrlInUse {
+			http.Error(resp, err.Error(), http.StatusBadRequest)
+			return
+		}
 		resp.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	response := ServerResponse{shortURL}
 	fmt.Println(response)
@@ -77,7 +87,7 @@ func router(resp http.ResponseWriter, req *http.Request) {
 			// return homepage
 			// TODO: deal w/ static resources too
 		default:
-			go GetFullURL(resp, *req, shortURL)
+			GetFullURL(resp, *req, shortURL)
 		}
 	case method == POST && url == "/":
 		requestBody, err := GetReqBody(*req)
@@ -87,7 +97,7 @@ func router(resp http.ResponseWriter, req *http.Request) {
 		CreateURL(resp, requestBody)
 	default:
 		// return a 501 error
-		go resp.WriteHeader(http.StatusNotImplemented)
+		resp.WriteHeader(http.StatusNotImplemented)
 	}
 }
 
