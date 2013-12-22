@@ -17,30 +17,30 @@ func router(resp http.ResponseWriter, req *http.Request) {
 	method := req.Method
 	shortURL := url[1:]
 
+	fmt.Println(method, url)
+
 	switch {
-	case url == "/": // homepage or creating a random url
-		switch method {
-		case GET:
-			// returns static files
-		case POST:
-			// creates a random endpoint
-		}
-	case url != "/": // querying for a URL or creating a specific one
-		switch method {
-		case GET:
-			// return the long url
+	case method == GET:
+		switch url {
+		case "/":
+			// return homepage
+		default:
+			// returned full length URL
 			longURL, err := shrink.RetrieveURL(shortURL)
 			fmt.Println(longURL, err)
-		case PUT:
-			// create a new endpoint
 		}
+	case method == POST && url == "/":
+		// creates a random endpoint
+	case method == PUT && url != "/":
+		// creates a specific endpoint
 	default:
+		resp.WriteHeader(http.StatusNotImplemented)
 		// return a 501 error
 	}
 }
 
 func main() {
-	fmt.Println("running")
+	fmt.Println("running on 6000")
 
 	http.HandleFunc("/", router)
 	http.ListenAndServe(":6000", nil)
