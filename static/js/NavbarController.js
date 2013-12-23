@@ -1,4 +1,8 @@
 
+/*
+ *  Navbar Controller
+ */
+
 angular.module('app.navbar', [])
 .controller('NavbarController', function ($scope, $location) {
 

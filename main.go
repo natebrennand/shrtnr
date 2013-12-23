@@ -92,6 +92,7 @@ func router(resp http.ResponseWriter, req *http.Request) {
 		}
 	case method == POST && url == "/":
 		requestBody, err := GetReqBody(*req)
+		fmt.Printf("%+v", requestBody);
 		if err != nil {
 			resp.WriteHeader(http.StatusInternalServerError)
 		}
