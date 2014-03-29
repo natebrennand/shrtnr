@@ -18,7 +18,7 @@ const (
 var (
 	UrlInUse    error = errors.New("Short URL already in use")
 	UrlNotFound error = errors.New("URL not found")
-	RedisConn redis.Conn
+	RedisConn   redis.Conn
 )
 
 // returns a new redis connection
@@ -42,7 +42,7 @@ func RandURL() string {
 
 // creates the requested shortened URL
 func CreateURL(longURL string, shortURL string) (string, error) {
-	if shortURL == "" {	// randomly assign URL
+	if shortURL == "" { // randomly assign URL
 		for { // loop until unique
 			shortURL = RandURL()
 			v, err := redis.Int(RedisConn.Do("EXISTS", shortURL))
