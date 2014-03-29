@@ -68,7 +68,6 @@ func CreateURL(resp http.ResponseWriter, data ServerRequest) {
 		return
 	}
 	response := ServerResponse{shortURL}
-	fmt.Println(response)
 	ReturnJson(resp, response)
 }
 
@@ -78,21 +77,16 @@ func router(resp http.ResponseWriter, req *http.Request) {
 	method := req.Method
 	shortURL := url[1:]
 
-	fmt.Println(method, url) // TODO: delete
-
 	switch {
 	case method == GET:
 		switch url {
-		case "/":
-			// return homepage
-			fmt.Println("Trying to serve the hompage")
+		case "/": // return homepage
 			http.ServeFile(resp, req, "static/index.html")
 		default:
 			GetFullURL(resp, *req, shortURL)
 		}
 	case method == POST && url == "/":
 		requestBody, err := GetReqBody(*req)
-		fmt.Printf("%+v", requestBody);
 		if err != nil {
 			resp.WriteHeader(http.StatusInternalServerError)
 		}
@@ -104,10 +98,10 @@ func router(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	fmt.Println("running on 8000")
+	shrink.Connect()
 
-	http.Handle("/static/",
-		http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 	http.HandleFunc("/", router)
+	fmt.Println("running on 8000")
 	http.ListenAndServe("localhost:8000", nil)
 }
