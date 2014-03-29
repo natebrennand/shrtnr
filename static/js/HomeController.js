@@ -30,7 +30,7 @@ angular.module('app.home', [])
     $http.post('/', data)
       .success(function (resp) {
         flash("Your shortened URL is " +
-          $location.absUrl().replace("#/", "") + resp.URL +,
+          $location.absUrl().replace("#/", "") + resp.URL,
           "success");
         console.log(resp);
       })
