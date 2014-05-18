@@ -1,10 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
+	"encoding/json"
 	"github.com/natebrennand/shrtnr/shrink"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -13,95 +15,72 @@ const (
 	PUT  string = "PUT"
 )
 
-// Used for server responses
-type ServerResponse struct {
-	URL string
+// route handler
+type serverHandler struct {
+	pool *redis.Pool
 }
 
-// Used for server requests
-type ServerRequest struct {
-	LongURL      string
-	RequestedURL string
-}
-
-// Serializes and returns the given ServerResponse struct through the resp
-func ReturnJson(resp http.ResponseWriter, data ServerResponse) {
-	jsonData, err := json.Marshal(data)
+func redisPoolConnect () (redis.Conn, error) {
+	c, err := redis.Dial("tcp", ":6379")
 	if err != nil {
-		resp.WriteHeader(http.StatusInternalServerError)
+		panic("Cannot connect to Redis")
 	}
-	resp.Header().Set("Content-Type", "application/json")
-	resp.Write(jsonData)
+	return c, err
+}
+
+type apiHandler struct {
+	conn redis.Conn
+	resp http.ResponseWriter
+	shortURL string
+	requestBody ServerRequest
 }
 
 // Parses the JSON request body from the request
-func GetReqBody(req http.Request) (ServerRequest, error) {
+func getReqBody(req http.Request) (ServerRequest, error) {
 	decoder := json.NewDecoder(req.Body)
 	var requestBody ServerRequest
 	err := decoder.Decode(&requestBody)
 	return requestBody, err
 }
 
-// Given a short URL find the full length URL and returns it
-func GetFullURL(resp http.ResponseWriter, req http.Request, shortURL string) {
-	longURL, err := shrink.RetrieveURL(shortURL)
-	if err != nil {
-		if err == shrink.UrlNotFound {
-			http.Error(resp, err.Error(), http.StatusFound)
-			return
-		}
-		http.Error(resp, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(resp, &req, longURL, 302)
-}
+// Routes all http requests to their corresponding functions
+func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
+	url := req.URL.Path
+	shortURL := url[1:] // removes the initial '/'
 
-// Given a ServerRequest, tries to create a short url before returning
-func CreateURL(resp http.ResponseWriter, data ServerRequest) {
-	shortURL, err := shrink.CreateURL(data.LongURL, data.RequestedURL)
-	if err != nil {
-		if err == shrink.UrlInUse {
-			http.Error(resp, err.Error(), http.StatusBadRequest)
-			return
-		}
+	requestBody, err := getReqBody(*req)
+	if err != nil { // return error
 		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	response := ServerResponse{shortURL}
-	ReturnJson(resp, response)
-}
-
-// Routes all http requests to their corresponding functions
-func router(resp http.ResponseWriter, req *http.Request) {
-	url := req.URL.Path
-	method := req.Method
-	shortURL := url[1:]
+	shawty := apiHandler{s.pool.Get(), resp, shortURL, requestBody}
 
 	switch {
-	case method == GET:
+	case req.Method == GET:
 		switch url {
-		case "/": // return homepage
+		case "/":  // return homepage
 			http.ServeFile(resp, req, "static/index.html")
 		default:
-			GetFullURL(resp, *req, shortURL)
+			shawty.getLongUrl(resp, *req, shortURL)
 		}
-	case method == POST && url == "/":
-		requestBody, err := GetReqBody(*req)
-		if err != nil {
-			resp.WriteHeader(http.StatusInternalServerError)
-		}
-		CreateURL(resp, requestBody)
+	case req.Method == POST && url == "/":
+		shawty.createShortUrl(resp, requestBody)
 	default:
 		// return a 501 error
 		resp.WriteHeader(http.StatusNotImplemented)
+		return
 	}
 }
 
 func main() {
 	shrink.Connect()
 
+	// handles static asset packages
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
-	http.HandleFunc("/", router)
+
+	// handles all API routes
+	http.Handle("/", serverHandler{redis.NewPool(redisPoolConnect, 2)})
+
 	fmt.Println("running on 8000")
 	http.ListenAndServe("localhost:8000", nil)
 }
