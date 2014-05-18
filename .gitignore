@@ -1,3 +1,9 @@
-main
-*.a
+
+# redis db
 *.rdb
+
+# executable
+shrtnr
+
+# logs
+logs

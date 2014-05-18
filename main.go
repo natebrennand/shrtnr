@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"shrtnr/shrink"
+	"github.com/natebrennand/shrtnr/shrink"
 )
 
 const (
