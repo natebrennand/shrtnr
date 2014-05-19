@@ -28,17 +28,17 @@ func (a apiHandler) ReturnJson(resp http.ResponseWriter, data ServerResponse) {
 }
 
 // Given a short URL find the full length URL and returns it
-func (a apiHandler) getLongUrl(resp http.ResponseWriter, req http.Request, shortURL string) {
+func (a apiHandler) getLongUrl(req http.Request, shortURL string) {
 	longURL, err := shrink.RetrieveURL(a.conn, shortURL)
 	if err != nil {
 		if err == shrink.UrlNotFound {
-			http.Error(resp, err.Error(), http.StatusFound)
+			http.Error(a.resp, err.Error(), http.StatusFound)
 			return
 		}
-		http.Error(resp, err.Error(), http.StatusInternalServerError)
+		http.Error(a.resp, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(resp, &req, longURL, 302)
+	http.Redirect(a.resp, &req, longURL, 302)
 }
 
 // Given a ServerRequest, tries to create a short url before returning

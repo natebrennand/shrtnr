@@ -10,7 +10,6 @@ import (
 const (
 	GET  string = "GET"
 	POST string = "POST"
-	PUT  string = "PUT"
 )
 
 // route handler
@@ -34,7 +33,7 @@ type apiHandler struct {
 }
 
 // Parses the JSON request body from the request
-func getReqBody(req http.Request) (ServerRequest, error) {
+func getReqBody(req *http.Request) (ServerRequest, error) {
 	decoder := json.NewDecoder(req.Body)
 	var requestBody ServerRequest
 	err := decoder.Decode(&requestBody)
@@ -46,11 +45,13 @@ func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
 	url := req.URL.Path
 	shortURL := url[1:] // removes the initial '/'
 
-	requestBody, err := getReqBody(*req)
-	if err != nil { // return error
+	requestBody, err := getReqBody(req)
+	// return error if POST request w/ no data
+	if err != nil && req.Method == POST {
 		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	shawty := apiHandler{s.pool.Get(), resp, shortURL, requestBody}
 	defer shawty.conn.Close()
 
@@ -60,14 +61,13 @@ func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
 		case "/":  // return homepage
 			http.ServeFile(resp, req, "static/index.html")
 		default:
-			shawty.getLongUrl(resp, *req, shortURL)
+			shawty.getLongUrl(*req, shortURL)
 		}
 	case req.Method == POST && url == "/":
 		shawty.createShortUrl(resp, requestBody)
 	default:
 		// return a 501 error
 		resp.WriteHeader(http.StatusNotImplemented)
-		return
 	}
 }
 
@@ -79,5 +79,8 @@ func main() {
 	http.Handle("/", serverHandler{redis.NewPool(redisPoolConnect, 2)})
 
 	fmt.Println("running on 8000")
-	http.ListenAndServe("localhost:8000", nil)
+	err := http.ListenAndServe("localhost:8000", nil)
+	if err != nil {
+		panic("HTTP ListenAndServe failed")
+	}
 }
