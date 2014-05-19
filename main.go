@@ -48,6 +48,7 @@ func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
 	requestBody, err := getReqBody(req)
 	// return error if POST request w/ no data
 	if err != nil && req.Method == POST {
+		fmt.Println("stupid")
 		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}

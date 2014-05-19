@@ -11,7 +11,7 @@ const (
 	ALPHABET    string = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	HASH_LENGTH int    = 5
 	LONG string = "LongURL"
-	COUNT string = "PingCount"
+	COUNT string = "HitCount"
 )
 
 var (
@@ -49,7 +49,7 @@ func CreateURL(conn redis.Conn, longURL string, shortURL string) (string, error)
 			return "", UrlInUse
 		}
 	}
-	v, err := conn.Do("HMSET", shortURL, LONG, longURL, )
+	v, err := redis.String(conn.Do("HMSET", shortURL, LONG, longURL, COUNT, 0))
 	if v != "OK" || err != nil {
 		return "", err
 	}

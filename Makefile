@@ -3,15 +3,11 @@ EXECUTABLE=shrtnr
 
 default: build
 
-run:
-	redis-server ./config/redis.conf
-	$(EXECUTABLE)
-
 test:
 	go test ./...
 
 build:
-	go build -o $(EXECUTABLE) main.go
+	go build -o $(EXECUTABLE) main.go routes.go
 
 clean:
 	go clean
