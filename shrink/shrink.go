@@ -10,6 +10,8 @@ import (
 const (
 	ALPHABET    string = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	HASH_LENGTH int    = 5
+	LONG string = "LongURL"
+	COUNT string = "PingCount"
 )
 
 var (
@@ -47,7 +49,7 @@ func CreateURL(conn redis.Conn, longURL string, shortURL string) (string, error)
 			return "", UrlInUse
 		}
 	}
-	v, err := conn.Do("SET", shortURL, longURL)
+	v, err := conn.Do("HMSET", shortURL, LONG, longURL, )
 	if v != "OK" || err != nil {
 		return "", err
 	}
@@ -56,8 +58,15 @@ func CreateURL(conn redis.Conn, longURL string, shortURL string) (string, error)
 
 // retrieves a URL based on the shortened URL
 func RetrieveURL(conn redis.Conn, shortURL string) (string, error) {
-	longURL, err := redis.String(conn.Do("GET", shortURL))
+	// lookup long URL
+	longURL, err := redis.String(conn.Do("HGET", shortURL, LONG))
 	if err != nil {
+		return "", UrlNotFound
+	}
+
+	// increment counter
+	currentCount, err := redis.Int(conn.Do("HINCRBY", shortURL, COUNT, 1))
+	if err != nil || currentCount < 0 {
 		return "", UrlNotFound
 	}
 	return longURL, nil

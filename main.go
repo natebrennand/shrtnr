@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"encoding/json"
-	"github.com/natebrennand/shrtnr/shrink"
-
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -54,6 +52,7 @@ func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	shawty := apiHandler{s.pool.Get(), resp, shortURL, requestBody}
+	defer shawty.conn.Close()
 
 	switch {
 	case req.Method == GET:
@@ -73,8 +72,6 @@ func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	shrink.Connect()
-
 	// handles static asset packages
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 
