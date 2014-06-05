@@ -6,6 +6,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"log"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -17,6 +18,8 @@ const (
 type serverHandler struct {
 	pool *redis.Pool
 }
+
+type statHandler serverHandler
 
 // create a pool of redis connections
 func redisPoolConnect() (redis.Conn, error) {
@@ -42,10 +45,20 @@ func getReqBody(req *http.Request) (ServerRequest, error) {
 	return requestBody, err
 }
 
+func (s statHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	if req.Method != GET {
+		resp.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	shawty := apiHandler{s.pool.Get(), resp, strings.Replace(req.URL.Path, "/stats/", "", -1), ServerRequest{}}
+	defer shawty.conn.Close()
+
+	shawty.getUrlStats(resp, req)
+}
+
 // Routes all http requests to their corresponding functions
 func (s serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	url := req.URL.Path
-	shortURL := url[1:] // removes the initial '/'
 
 	requestBody, err := getReqBody(req)
 	// return error if POST request w/ no data
@@ -55,16 +68,17 @@ func (s serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	shawty := apiHandler{s.pool.Get(), resp, shortURL, requestBody}
+	shawty := apiHandler{s.pool.Get(), resp, req.URL.Path[1:], requestBody}
 	defer shawty.conn.Close()
 
 	switch {
+	// handle homepage & URL forwarding
 	case req.Method == GET:
 		switch url {
 		case "/": // return homepage
 			http.ServeFile(resp, req, "static/index.html")
 		default:
-			shawty.getLongUrl(*req, shortURL)
+			shawty.forward(*req, req.URL.Path[1:])
 		}
 	case req.Method == POST && url == "/":
 		shawty.createShortUrl(resp, requestBody)
@@ -75,15 +89,24 @@ func (s serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func main() {
+func setupEndpoints() {
 	// handles static asset packages & favicon
 	http.Handle("/favion.ico", http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		http.ServeFile(resp, req, "static/favicon.ico")
 	}))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 
+	rPool := redis.NewPool(redisPoolConnect, 2)
+
+	// stat endpoint
+	http.Handle("/stats/", statHandler{rPool})
+
 	// handles all API routes
-	http.Handle("/", serverHandler{redis.NewPool(redisPoolConnect, 2)})
+	http.Handle("/", serverHandler{rPool})
+}
+
+func main() {
+	setupEndpoints()
 
 	fmt.Println("running on 8000")
 	err := http.ListenAndServe("localhost:8000", nil)
