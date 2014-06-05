@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+
 	"github.com/natebrennand/shrtnr/shrink"
 )
 
@@ -18,10 +20,11 @@ type ServerRequest struct {
 }
 
 // Serializes and returns the given ServerResponse struct through the resp
-func (a apiHandler) ReturnJson(resp http.ResponseWriter, data ServerResponse) {
+func (a apiHandler) returnJson(resp http.ResponseWriter, data interface{}) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
+		log.Printf("Error marshaling data, %s", err.Error())
 	}
 	resp.Header().Set("Content-Type", "application/json")
 	resp.Write(jsonData)
@@ -31,11 +34,8 @@ func (a apiHandler) ReturnJson(resp http.ResponseWriter, data ServerResponse) {
 func (a apiHandler) getLongUrl(req http.Request, shortURL string) {
 	longURL, err := shrink.RetrieveURL(a.conn, shortURL)
 	if err != nil {
-		if err == shrink.UrlNotFound {
-			http.Error(a.resp, err.Error(), http.StatusFound)
-			return
-		}
-		http.Error(a.resp, err.Error(), http.StatusInternalServerError)
+		http.Error(a.resp, err.Error(), http.StatusBadRequest)
+		log.Printf("%d: URL for short, %s, not found\n", http.StatusFound, shortURL)
 		return
 	}
 	http.Redirect(a.resp, &req, longURL, 302)
@@ -47,11 +47,13 @@ func (a apiHandler) createShortUrl(resp http.ResponseWriter, data ServerRequest)
 	if err != nil {
 		if err == shrink.UrlInUse {
 			http.Error(resp, err.Error(), http.StatusBadRequest)
+			log.Printf("Short url, %s, already in use\n", shortURL)
 			return
 		}
 		resp.WriteHeader(http.StatusInternalServerError)
+		log.Printf("%d: Unclassified error, %s\n", http.StatusInternalServerError, err.Error())
 		return
 	}
 	response := ServerResponse{shortURL}
-	a.ReturnJson(resp, response)
+	a.returnJson(resp, response)
 }

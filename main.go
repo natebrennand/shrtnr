@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"encoding/json"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
+	"log"
+	"net/http"
 )
 
 const (
@@ -17,7 +18,8 @@ type serverHandler struct {
 	pool *redis.Pool
 }
 
-func redisPoolConnect () (redis.Conn, error) {
+// create a pool of redis connections
+func redisPoolConnect() (redis.Conn, error) {
 	c, err := redis.Dial("tcp", ":6379")
 	if err != nil {
 		panic("Cannot connect to Redis")
@@ -26,9 +28,9 @@ func redisPoolConnect () (redis.Conn, error) {
 }
 
 type apiHandler struct {
-	conn redis.Conn
-	resp http.ResponseWriter
-	shortURL string
+	conn        redis.Conn
+	resp        http.ResponseWriter
+	shortURL    string
 	requestBody ServerRequest
 }
 
@@ -41,15 +43,15 @@ func getReqBody(req *http.Request) (ServerRequest, error) {
 }
 
 // Routes all http requests to their corresponding functions
-func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
+func (s serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	url := req.URL.Path
 	shortURL := url[1:] // removes the initial '/'
 
 	requestBody, err := getReqBody(req)
 	// return error if POST request w/ no data
 	if err != nil && req.Method == POST {
-		fmt.Println("stupid")
-		resp.WriteHeader(http.StatusInternalServerError)
+		resp.WriteHeader(http.StatusBadRequest)
+		log.Printf("%d: Error decoding POST request's payload\n", http.StatusBadRequest)
 		return
 	}
 
@@ -59,8 +61,11 @@ func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
 	switch {
 	case req.Method == GET:
 		switch url {
-		case "/":  // return homepage
+		case "/": // return homepage
 			http.ServeFile(resp, req, "static/index.html")
+		case "/favicon.ico":
+			http.ServeFile(resp, req, "static/favicon.ico")
+			resp.WriteHeader(http.StatusNotImplemented)
 		default:
 			shawty.getLongUrl(*req, shortURL)
 		}
@@ -69,6 +74,7 @@ func (s serverHandler) ServeHTTP (resp http.ResponseWriter, req *http.Request) {
 	default:
 		// return a 501 error
 		resp.WriteHeader(http.StatusNotImplemented)
+		log.Printf("%d: Method not implemented, %s to %s", http.StatusNotImplemented, req.Method, url)
 	}
 }
 
@@ -83,5 +89,6 @@ func main() {
 	err := http.ListenAndServe("localhost:8000", nil)
 	if err != nil {
 		panic("HTTP ListenAndServe failed")
+		log.Fatal("HTTP ListenAndServe failed")
 	}
 }
