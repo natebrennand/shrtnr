@@ -14,7 +14,7 @@ There is a basic Angular frontend written but this is intended to be consumed as
 
 ### Create URL
 
-POST /
+`POST /`
 
 data:
 
@@ -27,11 +27,25 @@ data:
 ```
 
 
+### URL Stats
 
+`GET /stats/[short url]`
+
+
+Response:
+
+(more data points may be added)
+
+```javascript
+{
+  "HitCount": X
+}
+
+```
 
 ### Forward Via Short URL
 
-GET /[short url]
+`GET /[short url]`
 
 Any get request that is not to `/`, `/static/*` or `/favicon.ico` will be interpreted as a forward request.
 
