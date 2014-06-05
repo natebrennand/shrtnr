@@ -2,6 +2,7 @@ package shrink
 
 import (
 	"errors"
+	"log"
 	"math/rand"
 
 	"github.com/garyburd/redigo/redis"
@@ -18,6 +19,10 @@ var (
 	UrlInUse    error = errors.New("Short URL already in use")
 	UrlNotFound error = errors.New("URL not found")
 )
+
+type UrlStats struct {
+	HitCount int `redis:"HitCount"`
+}
 
 // returns a randomly generated shortened URL
 func randURL() string {
@@ -58,7 +63,7 @@ func CreateURL(conn redis.Conn, longURL string, shortURL string) (string, error)
 }
 
 // retrieves a URL based on the shortened URL
-func RetrieveURL(conn redis.Conn, shortURL string) (string, error) {
+func RetrieveUrl(conn redis.Conn, shortURL string) (string, error) {
 	// lookup long URL
 	longURL, err := redis.String(conn.Do("HGET", shortURL, LONG))
 	if err != nil {
@@ -71,4 +76,27 @@ func RetrieveURL(conn redis.Conn, shortURL string) (string, error) {
 		return "", UrlNotFound
 	}
 	return longURL, nil
+}
+
+func RetrieveUrlStats(conn redis.Conn, shortURL string) (UrlStats, error) {
+	var stats UrlStats
+	rObj, err := redis.Values(conn.Do("HGETALL", shortURL))
+	if err != nil {
+		log.Printf(err.Error())
+		return stats, UrlNotFound
+	}
+	err = redis.ScanStruct(rObj, &stats)
+	if err != nil {
+		return stats, err
+	}
+	return stats, nil
+}
+
+func IncrUrlHitCount(conn redis.Conn, shortURL string) error {
+	_, err := redis.Int(conn.Do("HINCRBY", shortURL, COUNT, 1))
+	if err != nil {
+		log.Printf("Error while incrementing url hit count: %s\n", err.Error)
+		return err
+	}
+	return nil
 }
