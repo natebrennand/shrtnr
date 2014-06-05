@@ -1,24 +1,23 @@
 package shrink
 
 import (
-	"github.com/garyburd/redigo/redis"
-
 	"errors"
 	"math/rand"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 const (
 	ALPHABET    string = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	HASH_LENGTH int    = 5
-	LONG string = "LongURL"
-	COUNT string = "HitCount"
+	LONG        string = "LongURL"
+	COUNT       string = "HitCount"
 )
 
 var (
 	UrlInUse    error = errors.New("Short URL already in use")
 	UrlNotFound error = errors.New("URL not found")
 )
-
 
 // returns a randomly generated shortened URL
 func randURL() string {
@@ -49,10 +48,12 @@ func CreateURL(conn redis.Conn, longURL string, shortURL string) (string, error)
 			return "", UrlInUse
 		}
 	}
+	// create hash record
 	v, err := redis.String(conn.Do("HMSET", shortURL, LONG, longURL, COUNT, 0))
 	if v != "OK" || err != nil {
 		return "", err
 	}
+
 	return shortURL, err
 }
 
