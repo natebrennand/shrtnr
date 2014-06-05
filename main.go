@@ -63,9 +63,6 @@ func (s serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		switch url {
 		case "/": // return homepage
 			http.ServeFile(resp, req, "static/index.html")
-		case "/favicon.ico":
-			http.ServeFile(resp, req, "static/favicon.ico")
-			resp.WriteHeader(http.StatusNotImplemented)
 		default:
 			shawty.getLongUrl(*req, shortURL)
 		}
@@ -79,7 +76,10 @@ func (s serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	// handles static asset packages
+	// handles static asset packages & favicon
+	http.Handle("/favion.ico", http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		http.ServeFile(resp, req, "static/favicon.ico")
+	}))
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static/"))))
 
 	// handles all API routes
