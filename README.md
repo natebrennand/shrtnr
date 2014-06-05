@@ -3,17 +3,37 @@
 #Shrtnr
 
 A very basic Golang URL shortener backed by Redis.
-Created as an exercise in learning Go.
 
-Has a very basic frontend angular app included.
-Great examples of how not to use Bootstrap.
+There is a basic Angular frontend written but this is intended to be consumed as a restful API.
 
 
-##Dependencies
 
-Tried to only use standard library as far as I could.
-Since I wanted some persistance Redis seemed like appropriate rule bending.
 
-- Redigo
-  - `github.com/garyburd/redigo/redis`
+## API
+
+
+### Create URL
+
+POST /
+
+data:
+
+```javascript
+{
+  "LongURL":    "a long url for a webpage",
+  "RequestURL": "the requested short url"   // optional
+}
+
+```
+
+
+
+
+### Forward Via Short URL
+
+GET /[short url]
+
+Any get request that is not to `/`, `/static/*` or `/favicon.ico` will be interpreted as a forward request.
+
+
 
